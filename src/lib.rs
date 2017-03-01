@@ -1,14 +1,15 @@
 use std::iter::{Iterator, Peekable};
 
 
-pub fn closest_enough<'opts>(options: &[&'opts str], query: &str) -> Option<&'opts str>
+pub fn closest_enough<'opts, O, Q>(options: &[&'opts O], query: &Q) -> Option<&'opts O>
+    where O: AsRef<str> + ?Sized, Q: AsRef<str> + ?Sized
 {
-    let mut shortest_answer: Option<&str> = None;
+    let mut shortest_answer: Option<&O> = None;
 
     for &opt in options
     {
-        let mut optchars = opt.chars().peekable();
-        let mut querychars = query.chars().peekable();
+        let mut optchars = opt.as_ref().chars().peekable();
+        let mut querychars = query.as_ref().chars().peekable();
 
         while querychars.peek().is_some()
         {
@@ -50,12 +51,13 @@ fn same_char(a: Option<&char>, b: Option<&char>) -> bool
 }
 
 
-fn select_shortest<'a>(proposed: &'a str, previous: Option<&'a str>) -> &'a str
+fn select_shortest<'a, T>(proposed: &'a T, previous: Option<&'a T>) -> &'a T
+    where T: AsRef<str> + ?Sized
 {
     match previous
     {
         None => proposed,
-        Some(prev) => if proposed.len() < prev.len() { proposed } else { prev }
+        Some(prev) => if proposed.as_ref().len() < prev.as_ref().len() { proposed } else { prev }
     }
 }
 
