@@ -1,0 +1,6 @@
+[package]
+name = "close_enough"
+version = "0.1.0"
+authors = ["Paul Harris <paul.harris@eegeo.com>"]
+
+[dependencies]
