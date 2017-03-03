@@ -4,3 +4,12 @@ version = "0.1.0"
 authors = ["Paul Harris <paul.harris@eegeo.com>"]
 
 [dependencies]
+clap = { version = "2.20.5", optional = true }
+
+[features]
+cli = ["clap"]
+default = ["cli"]
+
+[[bin]]
+name = "ce"
+path = "src/ce.rs"
