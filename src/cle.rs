@@ -6,7 +6,7 @@ use std::env;
 use std::fs;
 use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
-use clap::{App, Arg, AppSettings, SubCommand};
+use clap::{App, Arg, AppSettings, SubCommand, Values};
 
 
 fn cle_app<'a, 'b>() -> App<'a, 'b>
@@ -21,6 +21,15 @@ fn cle_app<'a, 'b>() -> App<'a, 'b>
             .arg(
                 Arg::with_name("script")
                 .help("The script to generate")
+                .required(true)
+            )
+        )
+        .subcommand(SubCommand::with_name("-ce")
+            .about("Convenience command for ce script;\nFuzzy-searching cd command")
+            .arg(
+                Arg::with_name("dirs")
+                .help("Sequence of (fuzzy) directory names to cd through")
+                .multiple(true)
                 .required(true)
             )
         )
@@ -109,18 +118,33 @@ fn main()
         ("-gen-script", Some(gen_args)) =>
         {
             generate_script(gen_args.value_of("script").expect("cle: error: no script found to generate"));
-            return;
         },
-        _ => ()
+        ("-ce", Some(ce_args)) =>
+        {
+            let queries: Vec<&str> = ce_args.values_of("dirs").expect("cle: error: expected dirs argument").collect();
+            let inputs: Option<Values> = None;
+            let separator = "/";
+            let cwd_search_strategy = Some(CwdSearchStrategy::DirectoriesOnly);
+            let recursive = true;
+            cle(queries, inputs, separator, cwd_search_strategy, recursive);
+        },
+        _ =>
+        {
+            let queries: Vec<&str> = args.values_of("query").expect("cle: error: expected query argument").collect();
+            let inputs = args.values_of("inputs");
+            let separator = args.value_of("sep").expect("cle: error: could not find separator");
+            let cwd_search_strategy = CwdSearchStrategy::create(args.is_present("cwd"), args.is_present("files_only"), args.is_present("dirs_only"));
+            let recursive = args.is_present("recursive");
+            cle(queries, inputs, separator, cwd_search_strategy, recursive);
+        }
     }
+}
 
-    let queries: Vec<&str> = args.values_of("query").expect("Expected query argument").collect();
+fn cle<'a, I>(queries: Vec<&str>, inputs: Option<I>, separator: &str, cwd_search_strategy: Option<CwdSearchStrategy>, recursive: bool)
+    where I: Iterator<Item=&'a str>
+{
     let query_count = queries.len();
-    let separator = args.value_of("sep").expect("cle: error: could not find separator");
-    let cwd_search_strategy = CwdSearchStrategy::create(args.is_present("cwd"), args.is_present("files_only"), args.is_present("dirs_only"));
-    let recursive = args.is_present("recursive");
-
-    let input_lines = fetch_input_lines(args.values_of("inputs"), cwd_search_strategy);
+    let input_lines = fetch_input_lines(inputs, cwd_search_strategy);
 
     input_lines.get(0).expect("cle: error: no valid inputs");
 
