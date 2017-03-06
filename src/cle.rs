@@ -6,7 +6,7 @@ use std::env;
 use std::fs;
 use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
-use clap::{App, Arg};
+use clap::{App, Arg, AppSettings, SubCommand};
 
 
 fn cle_app<'a, 'b>() -> App<'a, 'b>
@@ -15,17 +15,20 @@ fn cle_app<'a, 'b>() -> App<'a, 'b>
         .author("Pirh, pirh.badger@gmail.com")
         .version("0.1.0")
         .about("Fuzzy-search the input and return the closest match")
+        .settings(&[AppSettings::SubcommandsNegateReqs, AppSettings::DisableHelpSubcommand])
+        .subcommand(SubCommand::with_name("-gen-script")
+            .about("Generate useful companion scripts")
+            .arg(
+                Arg::with_name("script")
+                .help("The script to generate")
+                .required(true)
+            )
+        )
         .arg(
             Arg::with_name("query")
             .help("The string or strings to search for;\nIf multiple strings are given, the closest match of each is returned")
             .multiple(true)
-            .required_unless("gen")
-        )
-        .arg(
-            Arg::with_name("gen")
-            .long("--gen")
-            .help("Generate useful companion scripts")
-            .takes_value(true)
+            .required(true)
         )
         .arg(
             Arg::with_name("inputs")
@@ -101,11 +104,11 @@ fn main()
 {
     let args = cle_app().get_matches();
 
-    match args.value_of("gen")
+    match args.subcommand()
     {
-        Some(script_name) =>
+        ("-gen-script", Some(gen_args)) =>
         {
-            generate_script(script_name);
+            generate_script(gen_args.value_of("script").expect("cle: error: no script found to generate"));
             return;
         },
         _ => ()
