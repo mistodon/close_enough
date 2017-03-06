@@ -9,9 +9,9 @@ use std::path::{Path, PathBuf};
 use clap::{App, Arg};
 
 
-fn ce_app<'a, 'b>() -> App<'a, 'b>
+fn cle_app<'a, 'b>() -> App<'a, 'b>
 {
-    App::new("ce")
+    App::new("cle")
         .author("Pirh, ***redacted.email@redacted.nope***")
         .version("0.1.0")
         .about("Fuzzy-search the input and return the closest match")
@@ -19,7 +19,13 @@ fn ce_app<'a, 'b>() -> App<'a, 'b>
             Arg::with_name("query")
             .help("The string or strings to search for;\nIf multiple strings are given, the closest match of each is returned")
             .multiple(true)
-            .required(true)
+            .required_unless("gen")
+        )
+        .arg(
+            Arg::with_name("gen")
+            .long("--gen")
+            .help("Generate useful companion scripts")
+            .takes_value(true)
         )
         .arg(
             Arg::with_name("inputs")
@@ -93,17 +99,27 @@ impl CwdSearchStrategy
 
 fn main()
 {
-    let args = ce_app().get_matches();
+    let args = cle_app().get_matches();
+
+    match args.value_of("gen")
+    {
+        Some(script_name) =>
+        {
+            generate_script(script_name);
+            return;
+        },
+        _ => ()
+    }
 
     let queries: Vec<&str> = args.values_of("query").expect("Expected query argument").collect();
     let query_count = queries.len();
-    let separator = args.value_of("sep").expect("ce: error: could not find separator");
+    let separator = args.value_of("sep").expect("cle: error: could not find separator");
     let cwd_search_strategy = CwdSearchStrategy::create(args.is_present("cwd"), args.is_present("files_only"), args.is_present("dirs_only"));
     let recursive = args.is_present("recursive");
 
     let input_lines = fetch_input_lines(args.values_of("inputs"), cwd_search_strategy);
 
-    input_lines.get(0).expect("ce: error: no valid inputs");
+    input_lines.get(0).expect("cle: error: no valid inputs");
 
     let inputs: Vec<&str> = input_lines.iter().map(|s| s.as_ref()).collect();
 
@@ -122,17 +138,17 @@ fn main()
             }
             let working_inputs = list_directory(working_path, strategy);
             let inputs: Vec<&str> = working_inputs.iter().map(|s| s.as_ref()).collect();
-            outputs.push(close_enough::closest_enough(&inputs, query).expect("ce: error: query failed to match any inputs").to_owned())
+            outputs.push(close_enough::closest_enough(&inputs, query).expect("cle: error: query failed to match any inputs").to_owned())
         }
         else
         {
-            outputs.push(close_enough::closest_enough(&inputs, query).expect("ce: error: query failed to match any inputs").to_owned())
+            outputs.push(close_enough::closest_enough(&inputs, query).expect("cle: error: query failed to match any inputs").to_owned())
         }
     }
 
     let output = &outputs.join(separator);
 
-    io::stdout().write(&output.as_bytes()).expect("ce: error: failed to write results");
+    io::stdout().write(&output.as_bytes()).expect("cle: error: failed to write results");
 }
 
 
@@ -143,24 +159,24 @@ fn fetch_input_lines<'a, I>(input_args: Option<I>, cwd_search_strategy: Option<C
     {
         (Some(inputs), _) => inputs.map(|s| Cow::Borrowed(s)).collect(),
         (None, None) => read_stdin(),
-        (None, Some(strategy)) => list_directory(env::current_dir().expect("ce: error: failed to identify current directory"), strategy)
+        (None, Some(strategy)) => list_directory(env::current_dir().expect("cle: error: failed to identify current directory"), strategy)
     }
 }
 
 fn list_directory<'a, P: AsRef<Path>>(dir: P, strategy: CwdSearchStrategy) -> Vec<Cow<'a, str>>
 {
-    let contents = fs::read_dir(&dir).expect("ce: error: failed to read current directory");
+    let contents = fs::read_dir(&dir).expect("cle: error: failed to read current directory");
 
     contents.filter_map(move |entry|
         {
-            let entry = entry.expect("ce: error: failed to read directory entry");
+            let entry = entry.expect("cle: error: failed to read directory entry");
             let entry = match strategy
             {
-                CwdSearchStrategy::FilesOnly => if entry.file_type().expect("ce: error: failed to read file type").is_file() { Some(entry) } else { None },
-                CwdSearchStrategy::DirectoriesOnly => if entry.file_type().expect("ce: error: failed to read file type").is_dir() { Some(entry) } else { None },
+                CwdSearchStrategy::FilesOnly => if entry.file_type().expect("cle: error: failed to read file type").is_file() { Some(entry) } else { None },
+                CwdSearchStrategy::DirectoriesOnly => if entry.file_type().expect("cle: error: failed to read file type").is_dir() { Some(entry) } else { None },
                 _ => Some(entry)
             };
-            entry.map(|entry| Cow::Owned(entry.file_name().into_string().expect("ce: error: failed to read directory entry")))
+            entry.map(|entry| Cow::Owned(entry.file_name().into_string().expect("cle: error: failed to read directory entry")))
         }
     ).collect()
 }
@@ -168,7 +184,24 @@ fn list_directory<'a, P: AsRef<Path>>(dir: P, strategy: CwdSearchStrategy) -> Ve
 fn read_stdin<'a>() -> Vec<Cow<'a, str>>
 {
     let mut s = String::new();
-    io::stdin().read_to_string(&mut s).expect("ce: error: failed to read from stdin");
+    io::stdin().read_to_string(&mut s).expect("cle: error: failed to read from stdin");
 
     s.lines().map(|s| Cow::Owned(s.to_owned())).collect()
+}
+
+
+const CE_SCRIPT_SOURCE: &'static str = include_str!("scripts/ce.sh");
+
+
+fn generate_script(script_name: &str)
+{
+    let source = match script_name
+    {
+        "ce" => Some(CE_SCRIPT_SOURCE),
+        _ => None
+    };
+
+    let source = source.expect(&format!("cle: error: no script named '{}'", script_name));
+
+    io::stdout().write_all(source.as_bytes()).expect("cle: error: failed to write script source");
 }
