@@ -5,6 +5,7 @@ use std::borrow::Cow;
 use std::env;
 use std::fs;
 use std::io::{self, Read, Write};
+use std::path::{Path, PathBuf};
 use clap::{App, Arg};
 
 
@@ -55,6 +56,12 @@ fn ce_app<'a, 'b>() -> App<'a, 'b>
             .requires("cwd")
             .conflicts_with("files_only")
         )
+        .arg(
+            Arg::with_name("recursive")
+            .short("-r")
+            .help("Used with --cwd: query recursively through directories with each query string in sequence")
+            .requires("cwd")
+        )
         .after_help(
 r#"Fuzzy-search a list of inputs with one or more query strings.
 The closest match to each query string is returned on its own line.
@@ -88,9 +95,11 @@ fn main()
 {
     let args = ce_app().get_matches();
 
-    let queries = args.values_of("query").expect("Expected query argument");
+    let queries: Vec<&str> = args.values_of("query").expect("Expected query argument").collect();
+    let query_count = queries.len();
     let separator = args.value_of("sep").expect("ce: error: could not find separator");
     let cwd_search_strategy = CwdSearchStrategy::create(args.is_present("cwd"), args.is_present("files_only"), args.is_present("dirs_only"));
+    let recursive = args.is_present("recursive");
 
     let input_lines = fetch_input_lines(args.values_of("inputs"), cwd_search_strategy);
 
@@ -98,11 +107,30 @@ fn main()
 
     let inputs: Vec<&str> = input_lines.iter().map(|s| s.as_ref()).collect();
 
-    let output: Vec<&str> = queries.map(
-        |q| close_enough::closest_enough(&inputs, q).expect("ce: error: query failed to match any inputs")
-    ).collect();
+    let mut outputs = Vec::new();
 
-    let output = &output.join(separator);
+    for (i, query) in queries.iter().enumerate()
+    {
+        if recursive
+        {
+            let last_query = i == query_count-1;
+            let strategy = if last_query { cwd_search_strategy.unwrap_or(CwdSearchStrategy::Anything) } else { CwdSearchStrategy::DirectoriesOnly };
+            let mut working_path = PathBuf::new();
+            for o in &outputs
+            {
+                working_path.push(o);
+            }
+            let working_inputs = list_directory(working_path, strategy);
+            let inputs: Vec<&str> = working_inputs.iter().map(|s| s.as_ref()).collect();
+            outputs.push(close_enough::closest_enough(&inputs, query).expect("ce: error: query failed to match any inputs").to_owned())
+        }
+        else
+        {
+            outputs.push(close_enough::closest_enough(&inputs, query).expect("ce: error: query failed to match any inputs").to_owned())
+        }
+    }
+
+    let output = &outputs.join(separator);
 
     io::stdout().write(&output.as_bytes()).expect("ce: error: failed to write results");
 }
@@ -115,14 +143,13 @@ fn fetch_input_lines<'a, I>(input_args: Option<I>, cwd_search_strategy: Option<C
     {
         (Some(inputs), _) => inputs.map(|s| Cow::Borrowed(s)).collect(),
         (None, None) => read_stdin(),
-        (None, Some(strategy)) => list_cwd(strategy)
+        (None, Some(strategy)) => list_directory(env::current_dir().expect("ce: error: failed to identify current directory"), strategy)
     }
 }
 
-fn list_cwd<'a>(strategy: CwdSearchStrategy) -> Vec<Cow<'a, str>>
+fn list_directory<'a, P: AsRef<Path>>(dir: P, strategy: CwdSearchStrategy) -> Vec<Cow<'a, str>>
 {
-    let here = env::current_dir().expect("ce: error: failed to identify current directory");
-    let contents = fs::read_dir(&here).expect("ce: error: failed to read current directory");
+    let contents = fs::read_dir(&dir).expect("ce: error: failed to read current directory");
 
     contents.filter_map(move |entry|
         {
