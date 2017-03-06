@@ -8,9 +8,9 @@ use std::io::{self, Read, Write};
 use clap::{App, Arg};
 
 
-fn main()
+fn ce_app<'a, 'b>() -> App<'a, 'b>
 {
-    let args = App::new("ce")
+    App::new("ce")
         .author("Pirh, pirh.badger@gmail.com")
         .version("0.1.0")
         .about("Fuzzy-search the input and return the closest match")
@@ -45,13 +45,20 @@ fn main()
 r#"Fuzzy-search a list of inputs with one or more query strings.
 The closest match to each query string is returned on its own line.
 If no inputs are provided, inputs are read from stdin."#)
-        .get_matches();
+}
+
+
+fn main()
+{
+    let args = ce_app().get_matches();
 
     let queries = args.values_of("query").expect("Expected query argument");
-
-    let input_lines = fetch_input_lines(args.values_of("inputs"), args.is_present("cwd"));
-    let inputs: Vec<&str> = input_lines.iter().map(|s| s.as_ref()).collect();
     let separator = args.value_of("sep").expect("ce: error: could not find separator");
+    let input_lines = fetch_input_lines(args.values_of("inputs"), args.is_present("cwd"));
+
+    input_lines.get(0).expect("ce: error: no valid inputs");
+
+    let inputs: Vec<&str> = input_lines.iter().map(|s| s.as_ref()).collect();
 
     let output: Vec<&str> = queries.map(
         |q| close_enough::closest_enough(&inputs, q).expect("ce: error: query failed to match any inputs")
@@ -61,6 +68,7 @@ If no inputs are provided, inputs are read from stdin."#)
 
     io::stdout().write(&output.as_bytes()).expect("ce: error: failed to write results");
 }
+
 
 fn fetch_input_lines<'a, I>(input_args: Option<I>, using_cwd: bool) -> Vec<Cow<'a, str>>
     where I: Iterator<Item=&'a str>
