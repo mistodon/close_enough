@@ -11,5 +11,5 @@ cli = ["clap"]
 default = ["cli"]
 
 [[bin]]
-name = "ce"
-path = "src/ce.rs"
+name = "cle"
+path = "src/cle.rs"
