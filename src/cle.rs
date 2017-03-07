@@ -159,6 +159,7 @@ fn cle<'a, I>(queries: Vec<&str>, inputs: Option<I>, separator: &str, cwd_search
             let last_query = i == query_count-1;
             let strategy = if last_query { cwd_search_strategy.unwrap_or(CwdSearchStrategy::Anything) } else { CwdSearchStrategy::DirectoriesOnly };
             let mut working_path = PathBuf::new();
+            working_path.push(".");
             for o in &outputs
             {
                 working_path.push(o);
@@ -190,9 +191,9 @@ fn fetch_input_lines<'a, I>(input_args: Option<I>, cwd_search_strategy: Option<C
     }
 }
 
-fn list_directory<'a, P: AsRef<Path>>(dir: P, strategy: CwdSearchStrategy) -> Vec<Cow<'a, str>>
+fn list_directory<'a, P: AsRef<Path> + std::fmt::Debug>(dir: P, strategy: CwdSearchStrategy) -> Vec<Cow<'a, str>>
 {
-    let contents = fs::read_dir(&dir).expect("cle: error: failed to read current directory");
+    let contents = fs::read_dir(&dir).expect(&format!("cle: error: failed to read contents of '{:?}'", dir));
 
     contents.filter_map(move |entry|
         {
