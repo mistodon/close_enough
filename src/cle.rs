@@ -25,7 +25,8 @@ fn cle_app<'a, 'b>() -> App<'a, 'b>
             )
         )
         .subcommand(SubCommand::with_name("-ce")
-            .about("Convenience command for ce script;\nFuzzy-searching cd command")
+            .about("Fuzzy-searching cd command")
+            .usage("ce <dirs>...")
             .arg(
                 Arg::with_name("dirs")
                 .help("Sequence of (fuzzy) directory names to cd through")
