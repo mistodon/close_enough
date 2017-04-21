@@ -3,10 +3,43 @@ extern crate clap;
 
 use std::borrow::Cow;
 use std::env;
+use std::error::Error;
 use std::fs;
 use std::io::{self, Read, Write};
 use std::path::{Path, PathBuf};
 use clap::{App, Arg, AppSettings, SubCommand, Values};
+
+
+enum CleError
+{
+    IoError(String),
+    InvalidScriptName(String)
+}
+
+impl CleError
+{
+    pub fn message(&self, prefix: &str) -> String
+    {
+        format!("{} {}\n", prefix, self.internal_message())
+    }
+
+    fn internal_message(&self) -> String
+    {
+        match self
+        {
+            &CleError::IoError(ref message) => message.clone(),
+            &CleError::InvalidScriptName(ref script_name) => format!("invalid script name '{}'", script_name)
+        }
+    }
+}
+
+impl From<io::Error> for CleError
+{
+    fn from(error: io::Error) -> Self
+    {
+        CleError::IoError(error.description().to_owned())
+    }
+}
 
 
 fn cle_app<'a, 'b>() -> App<'a, 'b>
@@ -21,6 +54,7 @@ fn cle_app<'a, 'b>() -> App<'a, 'b>
             .arg(
                 Arg::with_name("script")
                 .help("The script to generate")
+                .possible_values(&["ce", "invalid"])
                 .required(true)
             )
         )
@@ -114,11 +148,11 @@ fn main()
 {
     let args = cle_app().get_matches();
 
-    match args.subcommand()
+    let result = match args.subcommand()
     {
         ("-gen-script", Some(gen_args)) =>
         {
-            generate_script(gen_args.value_of("script").expect("cle: error: no script found to generate"));
+            generate_script(gen_args.value_of("script").expect("cle: error: no script found to generate"))
         },
         ("-ce", Some(ce_args)) =>
         {
@@ -127,7 +161,8 @@ fn main()
             let separator = "/";
             let cwd_search_strategy = Some(CwdSearchStrategy::DirectoriesOnly);
             let recursive = true;
-            cle(queries, inputs, separator, cwd_search_strategy, recursive);
+            
+            cle(queries, inputs, separator, cwd_search_strategy, recursive)
         },
         _ =>
         {
@@ -136,16 +171,32 @@ fn main()
             let separator = args.value_of("sep").expect("cle: error: could not find separator");
             let cwd_search_strategy = CwdSearchStrategy::create(args.is_present("cwd"), args.is_present("files_only"), args.is_present("dirs_only"));
             let recursive = args.is_present("recursive");
-            cle(queries, inputs, separator, cwd_search_strategy, recursive);
+            
+            cle(queries, inputs, separator, cwd_search_strategy, recursive)
+        }
+    };
+
+    write_result(result);
+}
+
+fn write_result(result: Result<Cow<str>, CleError>)
+{
+    match result
+    {
+        Ok(ref output) => { io::stdout().write(output.as_bytes()).expect("cle: error: failed to write results"); },
+        Err(ref error) =>
+        {
+            io::stderr().write(&error.message("cle: error:").as_bytes()).expect("cle: error: failed to write errors");
+            std::process::exit(1);
         }
     }
 }
 
-fn cle<'a, I>(queries: Vec<&str>, inputs: Option<I>, separator: &str, cwd_search_strategy: Option<CwdSearchStrategy>, recursive: bool)
+fn cle<'a, I>(queries: Vec<&str>, inputs: Option<I>, separator: &str, cwd_search_strategy: Option<CwdSearchStrategy>, recursive: bool) -> Result<Cow<'a, str>, CleError>
     where I: Iterator<Item=&'a str>
 {
     let query_count = queries.len();
-    let input_lines = fetch_input_lines(inputs, cwd_search_strategy);
+    let input_lines = fetch_input_lines(inputs, cwd_search_strategy)?;
 
     input_lines.get(0).expect("cle: error: no valid inputs");
 
@@ -165,7 +216,7 @@ fn cle<'a, I>(queries: Vec<&str>, inputs: Option<I>, separator: &str, cwd_search
             {
                 working_path.push(o);
             }
-            let working_inputs = list_directory(working_path, strategy);
+            let working_inputs = list_directory(working_path, strategy)?;
             let inputs: Vec<&str> = working_inputs.iter().map(|s| s.as_ref()).collect();
             outputs.push(close_enough::closest_enough(&inputs, query).expect("cle: error: query failed to match any inputs").to_owned())
         }
@@ -177,52 +228,54 @@ fn cle<'a, I>(queries: Vec<&str>, inputs: Option<I>, separator: &str, cwd_search
 
     let output = &outputs.join(separator);
 
-    io::stdout().write(&output.as_bytes()).expect("cle: error: failed to write results");
+    Ok(Cow::Owned(output.to_owned()))
 }
 
 
-fn fetch_input_lines<'a, I>(input_args: Option<I>, cwd_search_strategy: Option<CwdSearchStrategy>) -> Vec<Cow<'a, str>>
+fn fetch_input_lines<'a, I>(input_args: Option<I>, cwd_search_strategy: Option<CwdSearchStrategy>) -> Result<Vec<Cow<'a, str>>, CleError>
     where I: Iterator<Item=&'a str>
 {
-    match (input_args, cwd_search_strategy)
-    {
-        (Some(inputs), _) => inputs.map(|s| Cow::Borrowed(s)).collect(),
-        (None, None) => read_stdin(),
-        (None, Some(strategy)) => list_directory(env::current_dir().expect("cle: error: failed to identify current directory"), strategy)
-    }
+    unimplemented!()
+    // match (input_args, cwd_search_strategy)
+    // {
+    //     (Some(inputs), _) => inputs.map(|s| Cow::Borrowed(s)).collect(),
+    //     (None, None) => read_stdin(),
+    //     (None, Some(strategy)) => list_directory(env::current_dir().expect("cle: error: failed to identify current directory"), strategy)
+    // }
 }
 
-fn list_directory<'a, P: AsRef<Path> + std::fmt::Debug>(dir: P, strategy: CwdSearchStrategy) -> Vec<Cow<'a, str>>
+fn list_directory<'a, P: AsRef<Path> + std::fmt::Debug>(dir: P, strategy: CwdSearchStrategy) -> Result<Vec<Cow<'a, str>>, CleError>
 {
-    let contents = fs::read_dir(&dir).expect(&format!("cle: error: failed to read contents of '{:?}'", dir));
+    unimplemented!()
+    // let contents = fs::read_dir(&dir).expect(&format!("cle: error: failed to read contents of '{:?}'", dir));
 
-    contents.filter_map(move |entry|
-        {
-            let entry = entry.expect("cle: error: failed to read directory entry");
-            let entry = match strategy
-            {
-                CwdSearchStrategy::FilesOnly => if entry.file_type().expect("cle: error: failed to read file type").is_file() { Some(entry) } else { None },
-                CwdSearchStrategy::DirectoriesOnly => if entry.file_type().expect("cle: error: failed to read file type").is_dir() { Some(entry) } else { None },
-                _ => Some(entry)
-            };
-            entry.map(|entry| Cow::Owned(entry.file_name().into_string().expect("cle: error: failed to read directory entry")))
-        }
-    ).collect()
+    // contents.filter_map(move |entry|
+    //     {
+    //         let entry = entry.expect("cle: error: failed to read directory entry");
+    //         let entry = match strategy
+    //         {
+    //             CwdSearchStrategy::FilesOnly => if entry.file_type().expect("cle: error: failed to read file type").is_file() { Some(entry) } else { None },
+    //             CwdSearchStrategy::DirectoriesOnly => if entry.file_type().expect("cle: error: failed to read file type").is_dir() { Some(entry) } else { None },
+    //             _ => Some(entry)
+    //         };
+    //         entry.map(|entry| Cow::Owned(entry.file_name().into_string().expect("cle: error: failed to read directory entry")))
+    //     }
+    // ).collect()
 }
 
-fn read_stdin<'a>() -> Vec<Cow<'a, str>>
+fn read_stdin<'a>() -> Result<Vec<Cow<'a, str>>, CleError>
 {
     let mut s = String::new();
-    io::stdin().read_to_string(&mut s).expect("cle: error: failed to read from stdin");
+    io::stdin().read_to_string(&mut s)?;
 
-    s.lines().map(|s| Cow::Owned(s.to_owned())).collect()
+    Ok(s.lines().map(|s| Cow::Owned(s.to_owned())).collect())
 }
 
 
 const CE_SCRIPT_SOURCE: &'static str = include_str!("scripts/ce.sh");
 
 
-fn generate_script(script_name: &str)
+fn generate_script(script_name: &str) -> Result<Cow<str>, CleError>
 {
     let source = match script_name
     {
@@ -230,7 +283,9 @@ fn generate_script(script_name: &str)
         _ => None
     };
 
-    let source = source.expect(&format!("cle: error: no script named '{}'", script_name));
-
-    io::stdout().write_all(source.as_bytes()).expect("cle: error: failed to write script source");
+    match source
+    {
+        Some(source) => Ok(Cow::Borrowed(source)),
+        None => Err(CleError::InvalidScriptName(script_name.to_owned()))
+    }
 }
