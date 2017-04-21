@@ -95,7 +95,7 @@ enum CwdSearchStrategy
     Anything
 }
 
-impl CwdSearchStrategy 
+impl CwdSearchStrategy
 {
     fn create(cwd: bool, files_only: bool, dirs_only: bool) -> Option<CwdSearchStrategy>
     {
@@ -109,17 +109,32 @@ impl CwdSearchStrategy
     }
 }
 
+struct CleError
+{
+    pub message: String
+}
+impl CleError
+{
+    pub fn new(message: String) -> Self
+    {
+        CleError { message: message }
+    }
+}
+
+type CleResult<'a> = Result<Cow<'a, str>, CleError>;
+
 
 fn main()
 {
     let args = cle_app().get_matches();
 
-    match args.subcommand()
+    let (exe_name, result) = match args.subcommand()
     {
         ("-gen-script", Some(gen_args)) =>
         {
-            generate_script(gen_args.value_of("script").expect("cle: error: no script found to generate"));
+            ("cle", generate_script(gen_args.value_of("script").expect("cle: error: No script found to generate")))
         },
+
         ("-ce", Some(ce_args)) =>
         {
             let queries: Vec<&str> = ce_args.values_of("dirs").expect("cle: error: expected dirs argument").collect();
@@ -127,8 +142,9 @@ fn main()
             let separator = "/";
             let cwd_search_strategy = Some(CwdSearchStrategy::DirectoriesOnly);
             let recursive = true;
-            cle(queries, inputs, separator, cwd_search_strategy, recursive);
+            ("ce", cle(queries, inputs, separator, cwd_search_strategy, recursive))
         },
+
         _ =>
         {
             let queries: Vec<&str> = args.values_of("query").expect("cle: error: expected query argument").collect();
@@ -136,12 +152,17 @@ fn main()
             let separator = args.value_of("sep").expect("cle: error: could not find separator");
             let cwd_search_strategy = CwdSearchStrategy::create(args.is_present("cwd"), args.is_present("files_only"), args.is_present("dirs_only"));
             let recursive = args.is_present("recursive");
-            cle(queries, inputs, separator, cwd_search_strategy, recursive);
+            ("cle", cle(queries, inputs, separator, cwd_search_strategy, recursive))
         }
-    }
+    };
+    match result
+    {
+        Ok(output) => io::stdout().write_all(output.as_bytes()).expect("cle: error: Failed to write to stdout"),
+        Err(error) => io::stderr().write_all(format!("{}: {}\n", exe_name, error.message).as_bytes()).expect("cle: error: Failed to write to stderr")
+    };
 }
 
-fn cle<'a, I>(queries: Vec<&str>, inputs: Option<I>, separator: &str, cwd_search_strategy: Option<CwdSearchStrategy>, recursive: bool)
+fn cle<'a, I>(queries: Vec<&str>, inputs: Option<I>, separator: &str, cwd_search_strategy: Option<CwdSearchStrategy>, recursive: bool) -> CleResult<'a>
     where I: Iterator<Item=&'a str>
 {
     let query_count = queries.len();
@@ -177,7 +198,7 @@ fn cle<'a, I>(queries: Vec<&str>, inputs: Option<I>, separator: &str, cwd_search
 
     let output = &outputs.join(separator);
 
-    io::stdout().write(&output.as_bytes()).expect("cle: error: failed to write results");
+    Ok(Cow::Owned(output.to_owned()))
 }
 
 
@@ -222,15 +243,11 @@ fn read_stdin<'a>() -> Vec<Cow<'a, str>>
 const CE_SCRIPT_SOURCE: &'static str = include_str!("scripts/ce.sh");
 
 
-fn generate_script(script_name: &str)
+fn generate_script(script_name: &str) -> CleResult
 {
-    let source = match script_name
+    match script_name
     {
-        "ce" => Some(CE_SCRIPT_SOURCE),
-        _ => None
-    };
-
-    let source = source.expect(&format!("cle: error: no script named '{}'", script_name));
-
-    io::stdout().write_all(source.as_bytes()).expect("cle: error: failed to write script source");
+        "ce" => Ok(Cow::Borrowed(CE_SCRIPT_SOURCE)),
+        _ => Err(CleError::new(format!("Expected script name: No script available named '{}'", script_name)))
+    }
 }
