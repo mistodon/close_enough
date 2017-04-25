@@ -1,35 +1,37 @@
 use std::iter::{Iterator, Peekable};
 
 
-pub fn closest_enough<'opts, I, O, Q>(options: I, query: Q) -> Option<&'opts O>
-    where I: Iterator<Item=&'opts O>, O: AsRef<str>, Q: AsRef<str>
+pub fn closest_enough<I, O, Q>(options: I, query: Q) -> Option<O>
+    where I: Iterator<Item=O>, O: AsRef<str>, Q: AsRef<str>
 {
-    let mut shortest_answer: Option<&O> = None;
+    let mut shortest_answer: Option<O> = None;
 
     for opt in options
     {
-        let mut optchars = opt.as_ref().chars().peekable();
-        let mut querychars = query.as_ref().chars().peekable();
+        let matches = {
+            let mut optchars = opt.as_ref().chars().peekable();
+            let mut querychars = query.as_ref().chars().peekable();
 
-        while querychars.peek().is_some()
-        {
-            while optchars.peek().is_some() && !same_char(querychars.peek(), optchars.peek())
+            while querychars.peek().is_some()
             {
-                optchars.next();
+                while optchars.peek().is_some() && !same_char(querychars.peek(), optchars.peek())
+                {
+                    optchars.next();
+                }
+
+                if optchars.peek().is_none() { break; }
+
+                while querychars.peek().is_some() && same_char(querychars.peek(), optchars.peek())
+                {
+                    querychars.next();
+                    optchars.next();
+                }
+
+                skip_word(&mut optchars);
             }
 
-            if optchars.peek().is_none() { break; }
-
-            while querychars.peek().is_some() && same_char(querychars.peek(), optchars.peek())
-            {
-                querychars.next();
-                optchars.next();
-            }
-
-            skip_word(&mut optchars);
-        }
-
-        let matches = querychars.peek().is_none();
+            querychars.peek().is_none()
+        };
 
         if matches
         {
@@ -51,8 +53,8 @@ fn same_char(a: Option<&char>, b: Option<&char>) -> bool
 }
 
 
-fn select_shortest<'a, T>(proposed: &'a T, previous: Option<&'a T>) -> &'a T
-    where T: AsRef<str> + ?Sized
+fn select_shortest<T>(proposed: T, previous: Option<T>) -> T
+    where T: AsRef<str>
 {
     match previous
     {
