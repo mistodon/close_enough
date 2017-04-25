@@ -41,3 +41,4 @@ To do
 ---
 
 1.  Make `ce` ignore trailing slashes (or tab completion can get in the way)
+2.  Make `ce --help` format properly
