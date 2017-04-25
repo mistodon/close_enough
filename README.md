@@ -1,12 +1,43 @@
 close_enough
 ===
 
+Simple fuzzy-searching function and command line tool.
+
+Installation
+---
+
+`cargo install close_enough`
+
+### Installing the `ce` command
+
+1.  Install `close_enough` as above
+2.  Run `cle -gen-script ce > ce.sh` to generate the shell script
+3.  Source `ce.sh` in your `.bash_rc`, `.profile`, or similar
+
+Usage
+---
+
+```sh
+~$ cle duck --inputs blue_and_gold_macaw duck_billed_platypus angry_dog
+> duck_billed_platypus
+
+~$ cle dbp --inputs blue_and_gold_macaw duck_billed_platypus angry_dog
+> duck_billed_platypus
+```
+
+```sh
+~$ ls
+> my_file.txt  their_file.txt  your_file.txt
+~$ ls | cle my
+> my_file.txt
+```
+
+```sh
+~$ ce my lo dir pa
+~/my/long/directory/path$
+```
+
 To do
 ---
 
-1.  Cleaner input reading
-2.  Replace panics with elegant error reporting and exit code
-3.  Fix the Vec<T> -> Vec<&T> conversion problem
-4.  Be a bit less copy-happy (recursive function?)
-5.  Add convenience cli endpoint for ce to make the help/usage message prettier
-    1.  Should return non-zero on help so that the following cd command can be ignored
+1.  Make `ce` ignore trailing slashes (or tab completion can get in the way)
