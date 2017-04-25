@@ -1,12 +1,12 @@
 use std::iter::{Iterator, Peekable};
 
 
-pub fn closest_enough<'opts, O, Q>(options: &[&'opts O], query: &Q) -> Option<&'opts O>
-    where O: AsRef<str> + ?Sized, Q: AsRef<str> + ?Sized
+pub fn closest_enough<'opts, I, O, Q>(options: I, query: Q) -> Option<&'opts O>
+    where I: Iterator<Item=&'opts O>, O: AsRef<str>, Q: AsRef<str>
 {
     let mut shortest_answer: Option<&O> = None;
 
-    for &opt in options
+    for opt in options
     {
         let mut optchars = opt.as_ref().chars().peekable();
         let mut querychars = query.as_ref().chars().peekable();
@@ -85,9 +85,9 @@ mod tests {
 
     use super::*;
 
-    fn test(options: &[&str], query: &str, result: Option<&str>)
+    fn test(options: &[&str], query: &str, expected: Option<&str>)
     {
-        assert_eq!(closest_enough(options, query), result);
+        assert_eq!(closest_enough(options.iter(), query), expected.as_ref());
     }
 
     #[test]
@@ -154,5 +154,14 @@ mod tests {
     fn failed_match_does_not_look_within_same_word()
     {
         test(&["averybiglongmatch"], "avblm", None);
+    }
+
+    #[test]
+    fn works_on_useful_collection_types()
+    {
+        assert_eq!(closest_enough(["a", "thing"].iter(), "thing"), Some(&"thing"));
+        assert_eq!(closest_enough((&["a", "thing"]).iter(), "thing"), Some(&"thing"));
+        assert_eq!(closest_enough(vec!["a", "thing"].iter(), "thing"), Some(&"thing"));
+        assert_eq!(closest_enough(vec!["a".to_owned(), "thing".to_owned()].iter(), "thing"), Some(&"thing".to_owned()));
     }
 }
