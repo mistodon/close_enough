@@ -16,3 +16,4 @@ default = ["cli"]
 [[bin]]
 name = "cle"
 path = "src/cle.rs"
+required-features = ["cli"]
