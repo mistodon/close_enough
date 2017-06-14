@@ -37,12 +37,23 @@ Usage
 ~/my/long/directory/path$
 ```
 
+```sh
+~/my/long/directory/path$ ce ..
+~/my/long/directory$
+```
+
+```sh
+~/my/long/directory/path$ ce ..3
+~/my$
+```
+
+```sh
+~/my/long/directory/path$ ce ..my other dir pa
+~/my/other/directory/path$
+```
+
 To do
 ---
 
 1.  Make `ce` ignore trailing slashes (or tab completion can get in the way)
 2.  Make `ce --help` format properly
-3.  Allow `ce ..3` which is equivalent to `cd ../../..`
-4.  Allow `ce -dir` which searches upwards through the sections of the current directory:
-        /first/second/third$ ce -fir
-        /first$
