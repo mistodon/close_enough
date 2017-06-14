@@ -1,17 +1,14 @@
 extern crate close_enough;
 extern crate clap;
 
-use std::env;
-use std::fs;
-use std::io::{self, Read, Write};
-use std::path::{PathBuf};
-use std::process;
-use clap::{App, Arg, AppSettings, SubCommand};
 
-const CE_SCRIPT_SOURCE: &'static str = include_str!("scripts/ce.sh");
+use clap::App;
+
 
 fn cle_app<'a, 'b>() -> App<'a, 'b>
 {
+    use clap::{Arg, AppSettings, SubCommand};
+
     App::new("cle")
         .author("Pirh, ***redacted.email@redacted.nope***")
         .version("0.1.1")
@@ -25,6 +22,7 @@ fn cle_app<'a, 'b>() -> App<'a, 'b>
         )
         .subcommand(SubCommand::with_name("-ce")
             .about("Fuzzy-searching cd command")
+            .setting(AppSettings::AllowLeadingHyphen)
             .usage("ce <dirs>...")
             .arg(
                 Arg::with_name("dirs")
@@ -52,6 +50,7 @@ The closest match to each query string is returned on its own line.
 If no inputs are provided, inputs are read from stdin."#)
 }
 
+
 fn main()
 {
     let args = cle_app().get_matches();
@@ -59,6 +58,8 @@ fn main()
     {
         ("-gen-script", Some(args)) =>
         {
+            const CE_SCRIPT_SOURCE: &'static str = include_str!("scripts/ce.sh");
+
             match args.subcommand_name()
             {
                 Some("ce") => output_success(CE_SCRIPT_SOURCE),
@@ -68,13 +69,15 @@ fn main()
 
         ("-ce", Some(args)) =>
         {
+            use std::path::PathBuf;
+
             let queries = args.values_of("dirs").unwrap();
-            let starting_dir = env::current_dir().expect("cle: error: failed to identify current directory");
+            let starting_dir = std::env::current_dir().expect("cle: error: failed to identify current directory");
             let mut working_dir = PathBuf::new();
             working_dir.push(starting_dir);
             for query in queries
             {
-                let dir_contents = fs::read_dir(&working_dir).unwrap();
+                let dir_contents = std::fs::read_dir(&working_dir).unwrap();
                 let inputs = dir_contents.map(|e|
                     e.unwrap()).filter_map(|entry|
                         if entry.file_type().unwrap().is_dir()
@@ -97,6 +100,8 @@ fn main()
 
         _ =>
         {
+            use std::io::Read;
+
             let query = args.value_of("query").unwrap();
             let inputs = args.values_of("inputs");
             let mut stdin = String::new();
@@ -105,7 +110,7 @@ fn main()
                 Some(inputs) => close_enough::closest_enough(inputs, query),
                 None =>
                 {
-                    io::stdin().read_to_string(&mut stdin).expect("cle: error: Failed to read from stdin");
+                    std::io::stdin().read_to_string(&mut stdin).expect("cle: error: Failed to read from stdin");
                     close_enough::closest_enough(stdin.lines(), query)
                 }
             };
@@ -119,21 +124,28 @@ fn main()
     unreachable!();
 }
 
+
 fn output_success<T>(output: T)
-    where T: AsRef<str>
+where
+    T: AsRef<str>
 {
-    io::stdout().write_all(output.as_ref().as_bytes()).expect("cle: error: Failed to write to stdout");
-    process::exit(0);
+    use std::io::Write;
+    std::io::stdout().write_all(output.as_ref().as_bytes()).expect("cle: error: Failed to write to stdout");
+    std::process::exit(0);
 }
 
+
 fn output_failure<T>(message: T)
-    where T: AsRef<str>
+where
+    T: AsRef<str>
 {
-    io::stderr().write_all(message.as_ref().as_bytes()).expect("cle: error: Failed to write to stderr");
-    process::exit(1);
+    use std::io::Write;
+    std::io::stderr().write_all(message.as_ref().as_bytes()).expect("cle: error: Failed to write to stderr");
+    std::process::exit(1);
 }
+
 
 fn exit_with_failure()
 {
-    process::exit(1);
+    std::process::exit(1);
 }
