@@ -22,7 +22,6 @@ fn cle_app<'a, 'b>() -> App<'a, 'b>
         )
         .subcommand(SubCommand::with_name("-ce")
             .about("Fuzzy-searching cd command")
-            .setting(AppSettings::AllowLeadingHyphen)
             .usage("ce <dirs>...")
             .arg(
                 Arg::with_name("dirs")
@@ -77,22 +76,62 @@ fn main()
             working_dir.push(starting_dir);
             for query in queries
             {
-                let dir_contents = std::fs::read_dir(&working_dir).unwrap();
-                let inputs = dir_contents.map(|e|
-                    e.unwrap()).filter_map(|entry|
-                        if entry.file_type().unwrap().is_dir()
-                        {
-                            entry.file_name().into_string().ok()
-                        }
-                        else
-                        {
-                            None
-                        });
-                let result = close_enough::closest_enough(inputs, query);
-                match result
+                let reverse_searching = query.starts_with("..");
+                if reverse_searching
                 {
-                    Some(dir) => working_dir.push(dir),
-                    None => output_failure(format!("ce: No directory name matching '{}': Reached '{}'\n", query, working_dir.display()))
+                    let (_, query) = query.split_at(2);
+                    match query
+                    {
+                        "" => { working_dir.pop(); },
+                        query =>
+                        {
+                            if let Ok(popcount) = query.parse::<u64>()
+                            {
+                                for _ in 0..popcount
+                                    { working_dir.pop(); }
+                            }
+                            else
+                            {
+                                let target = {
+                                    let path_components = working_dir.iter().filter_map(|path| path.to_str());
+                                    let target = close_enough::closest_enough(path_components, query);
+                                    target.map(|t| t.to_owned())
+                                };
+                                match target
+                                {
+                                    Some(ref dir) =>
+                                    {
+                                        let working_dir = &mut working_dir;
+                                        while !working_dir.ends_with(dir)
+                                        {
+                                            working_dir.pop();
+                                        }
+                                    },
+                                    None => output_failure(format!("ce: No directory name matching '{}': Reached '{}'\n", query, working_dir.display()))
+                                }
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    let dir_contents = std::fs::read_dir(&working_dir).unwrap();
+                    let inputs = dir_contents.map(|e|
+                        e.unwrap()).filter_map(|entry|
+                            if entry.file_type().unwrap().is_dir()
+                            {
+                                entry.file_name().into_string().ok()
+                            }
+                            else
+                            {
+                                None
+                            });
+                    let result = close_enough::closest_enough(inputs, query);
+                    match result
+                    {
+                        Some(dir) => working_dir.push(dir),
+                        None => output_failure(format!("ce: No directory name matching '{}': Reached '{}'\n", query, working_dir.display()))
+                    }
                 }
             }
             output_success(working_dir.as_path().to_str().unwrap());
