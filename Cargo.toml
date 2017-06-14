@@ -1,6 +1,6 @@
 [package]
 name = "close_enough"
-version = "0.1.1"
+version = "0.2.0"
 authors = ["Paul Harris <paul.harris@eegeo.com>"]
 
 [dependencies.clap]

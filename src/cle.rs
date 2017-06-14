@@ -11,7 +11,7 @@ fn cle_app<'a, 'b>() -> App<'a, 'b>
 
     App::new("cle")
         .author("Pirh, pirh.badger@gmail.com")
-        .version("0.1.1")
+        .version("0.2.0")
         .about("Fuzzy-search the input and return the closest match")
         .settings(&[AppSettings::SubcommandsNegateReqs, AppSettings::DisableHelpSubcommand])
         .subcommand(SubCommand::with_name("-gen-script")
