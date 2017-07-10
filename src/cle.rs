@@ -43,6 +43,12 @@ fn cle_app<'a, 'b>() -> App<'a, 'b>
             .takes_value(true)
             .multiple(true)
         )
+        .arg(
+            Arg::with_name("exec")
+            .long("--exec")
+            .help("A command to execute on the result of the find operation")
+            .takes_value(true)
+        )
         .after_help(
 r#"Fuzzy-search a list of inputs with one or more query strings.
 The closest match to each query string is returned on its own line.
@@ -153,10 +159,12 @@ fn main()
                     close_enough::closest_enough(stdin.lines(), query)
                 }
             };
-            match result
+            let exec_command: Option<&str> = args.value_of("exec");
+            match (result, exec_command)
             {
-                Some(matching) => output_success(matching),
-                None => exit_with_failure()
+                (Some(matching), None) => output_success(matching),
+                (Some(matching), Some(command)) => execute_command(command, matching),
+                _ => exit_with_failure()
             }
         }
     }
@@ -181,6 +189,23 @@ where
     use std::io::Write;
     std::io::stderr().write_all(message.as_ref().as_bytes()).expect("cle: error: Failed to write to stderr");
     std::process::exit(1);
+}
+
+
+fn execute_command<S, T>(command: S, arg: T)
+where
+    S: AsRef<str>,
+    T: AsRef<str>
+{
+    use std::process::Command;
+
+    let mut args = command.as_ref().split_whitespace();
+    let executable_name = args.next().expect("cle: error: No executable provided");
+    let arg = arg.as_ref();
+
+    let mut command = Command::new(executable_name).args(args).arg(arg).spawn().expect("cle: error: Failed to run exec command");
+    let exit_code = command.wait().expect("cle: error: Failed to wait for exec command");
+    std::process::exit(exit_code.code().unwrap_or(1));
 }
 
 
