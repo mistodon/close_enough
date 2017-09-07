@@ -98,7 +98,7 @@ fn main()
                             {
                                 let target = {
                                     let path_components = working_dir.iter().filter_map(|path| path.to_str());
-                                    let target = close_enough::closest_enough(path_components, query);
+                                    let target = close_enough::close_enough(path_components, query);
                                     target.map(|t| t.to_owned())
                                 };
 
@@ -133,7 +133,7 @@ fn main()
                                 None
                             });
 
-                    let result = close_enough::closest_enough(inputs, query);
+                    let result = close_enough::close_enough(inputs, query);
 
                     match result
                     {
@@ -155,11 +155,11 @@ fn main()
 
             let result: Option<&str> = match inputs
             {
-                Some(inputs) => close_enough::closest_enough(inputs, query),
+                Some(inputs) => close_enough::close_enough(inputs, query),
                 None =>
                 {
                     std::io::stdin().read_to_string(&mut stdin).expect("cle: error: Failed to read from stdin");
-                    close_enough::closest_enough(stdin.lines(), query)
+                    close_enough::close_enough(stdin.lines(), query)
                 }
             };
 
