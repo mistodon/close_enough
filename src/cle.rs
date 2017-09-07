@@ -1,7 +1,6 @@
 extern crate close_enough;
 extern crate clap;
 
-
 use clap::App;
 
 
@@ -11,14 +10,16 @@ fn cle_app<'a, 'b>() -> App<'a, 'b>
 
     App::new("cle")
         .author("Pirh, pirh.badger@gmail.com")
-        .version("0.2.0")
+        .version(env!("CARGO_PKG_VERSION"))
         .about("Fuzzy-search the input and return the closest match")
         .settings(&[AppSettings::SubcommandsNegateReqs, AppSettings::DisableHelpSubcommand, AppSettings::VersionlessSubcommands])
-        .subcommand(SubCommand::with_name("-gen-script")
-            .about("Generate useful companion scripts")
-            .settings(&[AppSettings::SubcommandRequired])
-            .subcommand(SubCommand::with_name("ce")
-                .about("Generate 'ce' command for fuzzy directory changing")
+        .subcommand(SubCommand::with_name("-ce-script")
+            .about("Generate shell script for the `ce` command")
+            .arg(
+                Arg::with_name("shell")
+                    .required(true)
+                    .takes_value(true)
+                    .possible_values(&["bash"])
             )
         )
         .subcommand(SubCommand::with_name("-ce")
@@ -56,11 +57,11 @@ fn main()
     let args = cle_app().get_matches();
     match args.subcommand()
     {
-        ("-gen-script", Some(args)) =>
+        ("-ce-script", Some(args)) =>
         {
-            match args.subcommand_name()
+            match args.value_of("shell").unwrap()
             {
-                Some("ce") => output_success(include_str!("scripts/ce.sh")),
+                "bash" => output_success(include_str!("scripts/ce.sh")),
                 _ => unreachable!()
             }
         },

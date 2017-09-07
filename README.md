@@ -11,8 +11,8 @@ Installation
 ### Installing the `ce` command
 
 1.  Install `close_enough` as above
-2.  Run `cle -gen-script ce > ce.sh` to generate the shell script
-3.  Source `ce.sh` in your `.bash_rc`, `.profile`, or similar
+2.  Run `cle -ce-script bash > ce.sh` to generate the shell script
+3.  Source `ce.sh` in your `.bashrc`, `.profile`, or similar
 
 Usage
 ---
@@ -50,5 +50,11 @@ Usage
 ```sh
 ~/my/long/directory/path$ ce ..my other dir pa
 ~/my/other/directory/path$
+```
+
+```sh
+~$ ce u lo sh
+/usr/local/share$ ce ~
+~$
 ```
 
