@@ -1,7 +1,7 @@
 use std::iter::{Iterator, Peekable};
 
 
-pub fn closest_enough<I, O, Q>(options: I, query: Q) -> Option<O>
+pub fn close_enough<I, O, Q>(options: I, query: Q) -> Option<O>
     where I: Iterator<Item=O>, O: AsRef<str>, Q: AsRef<str>
 {
     let mut shortest_answer: Option<O> = None;
@@ -89,7 +89,7 @@ mod tests {
 
     fn test(options: &[&str], query: &str, expected: Option<&str>)
     {
-        assert_eq!(closest_enough(options.iter(), query), expected.as_ref());
+        assert_eq!(close_enough(options.iter(), query), expected.as_ref());
     }
 
     #[test]
@@ -161,9 +161,9 @@ mod tests {
     #[test]
     fn works_on_useful_collection_types()
     {
-        assert_eq!(closest_enough(["a", "thing"].iter(), "thing"), Some(&"thing"));
-        assert_eq!(closest_enough((&["a", "thing"]).iter(), "thing"), Some(&"thing"));
-        assert_eq!(closest_enough(vec!["a", "thing"].iter(), "thing"), Some(&"thing"));
-        assert_eq!(closest_enough(vec!["a".to_owned(), "thing".to_owned()].iter(), "thing"), Some(&"thing".to_owned()));
+        assert_eq!(close_enough(["a", "thing"].iter(), "thing"), Some(&"thing"));
+        assert_eq!(close_enough((&["a", "thing"]).iter(), "thing"), Some(&"thing"));
+        assert_eq!(close_enough(vec!["a", "thing"].iter(), "thing"), Some(&"thing"));
+        assert_eq!(close_enough(vec!["a".to_owned(), "thing".to_owned()].iter(), "thing"), Some(&"thing".to_owned()));
     }
 }
