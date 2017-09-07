@@ -55,6 +55,5 @@ Usage
 To do
 ---
 
-1.  Make `ce` ignore trailing slashes (or tab completion can get in the way)
-2.  Make `ce` understand a leading slash
-3.  Make `ce` understand the tilde for home directory
+1.  Make `ce` understand a leading slash
+2.  Make `ce` understand the tilde for home directory
