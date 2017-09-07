@@ -44,8 +44,8 @@ fn cle_app<'a, 'b>() -> App<'a, 'b>
             .multiple(true)
         )
         .after_help(
-r#"Fuzzy-search a list of inputs with one or more query strings.
-The closest match to each query string is returned on its own line.
+r#"Fuzzy-search a list of inputs with a query string. 
+The closest match is written to stdout.
 If no inputs are provided, inputs are read from stdin."#)
 }
 
