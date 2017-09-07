@@ -76,6 +76,7 @@ fn main()
 
             for query in queries
             {
+                let query = query.trim_right_matches('/');
                 let reverse_searching = query.starts_with("..");
 
                 if reverse_searching
