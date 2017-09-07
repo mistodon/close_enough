@@ -13,7 +13,7 @@ fn cle_app<'a, 'b>() -> App<'a, 'b>
         .author("Pirh, ***redacted.email@redacted.nope***")
         .version("0.2.0")
         .about("Fuzzy-search the input and return the closest match")
-        .settings(&[AppSettings::SubcommandsNegateReqs, AppSettings::DisableHelpSubcommand])
+        .settings(&[AppSettings::SubcommandsNegateReqs, AppSettings::DisableHelpSubcommand, AppSettings::VersionlessSubcommands])
         .subcommand(SubCommand::with_name("-gen-script")
             .about("Generate useful companion scripts")
             .settings(&[AppSettings::SubcommandRequired])
