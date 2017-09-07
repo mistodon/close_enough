@@ -73,12 +73,15 @@ fn main()
             let starting_dir = std::env::current_dir().expect("cle: error: failed to identify current directory");
             let mut working_dir = PathBuf::new();
             working_dir.push(starting_dir);
+
             for query in queries
             {
                 let reverse_searching = query.starts_with("..");
+
                 if reverse_searching
                 {
                     let (_, query) = query.split_at(2);
+
                     match query
                     {
                         "" => { working_dir.pop(); },
@@ -87,7 +90,9 @@ fn main()
                             if let Ok(popcount) = query.parse::<u64>()
                             {
                                 for _ in 0..popcount
-                                    { working_dir.pop(); }
+                                {
+                                    working_dir.pop();
+                                }
                             }
                             else
                             {
@@ -96,6 +101,7 @@ fn main()
                                     let target = close_enough::closest_enough(path_components, query);
                                     target.map(|t| t.to_owned())
                                 };
+
                                 match target
                                 {
                                     Some(ref dir) =>
@@ -115,6 +121,7 @@ fn main()
                 else
                 {
                     let dir_contents = std::fs::read_dir(&working_dir).unwrap();
+
                     let inputs = dir_contents.map(|e|
                         e.unwrap()).filter_map(|entry|
                             if entry.file_type().unwrap().is_dir()
@@ -125,7 +132,9 @@ fn main()
                             {
                                 None
                             });
+
                     let result = close_enough::closest_enough(inputs, query);
+
                     match result
                     {
                         Some(dir) => working_dir.push(dir),
@@ -143,6 +152,7 @@ fn main()
             let query = args.value_of("query").unwrap();
             let inputs = args.values_of("inputs");
             let mut stdin = String::new();
+
             let result: Option<&str> = match inputs
             {
                 Some(inputs) => close_enough::closest_enough(inputs, query),
@@ -152,6 +162,7 @@ fn main()
                     close_enough::closest_enough(stdin.lines(), query)
                 }
             };
+
             match result
             {
                 Some(matching) => output_success(matching),
