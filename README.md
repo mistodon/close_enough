@@ -52,8 +52,3 @@ Usage
 ~/my/other/directory/path$
 ```
 
-To do
----
-
-1.  Make `ce` understand a leading slash
-2.  Make `ce` understand the tilde for home directory

@@ -76,10 +76,10 @@ fn main()
 
             for query in queries
             {
-                if query == "/"
+                if query.starts_with('/')
                 {
                     working_dir = PathBuf::new();
-                    working_dir.push("/");
+                    working_dir.push(query);
                     continue
                 }
 
