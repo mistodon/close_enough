@@ -120,7 +120,7 @@ fn main()
                                             working_dir.pop();
                                         }
                                     },
-                                    None => output_failure(format!("ce: No directory name matching '{}': Reached '{}'\n", query, working_dir.display()))
+                                    None => output_failure(format!("ce: No directory name matching '{}': Reached '{}'", query, working_dir.display()))
                                 }
                             }
                         }
@@ -146,7 +146,7 @@ fn main()
                     match result
                     {
                         Some(dir) => working_dir.push(dir),
-                        None => output_failure(format!("ce: No directory name matching '{}': Reached '{}'\n", query, working_dir.display()))
+                        None => output_failure(format!("ce: No directory name matching '{}': Reached '{}'", query, working_dir.display()))
                     }
                 }
             }
@@ -186,8 +186,7 @@ fn output_success<T>(output: T)
 where
     T: AsRef<str>
 {
-    use std::io::Write;
-    std::io::stdout().write_all(output.as_ref().as_bytes()).expect("cle: error: Failed to write to stdout");
+    print!("{}", output.as_ref());
     std::process::exit(0);
 }
 
@@ -196,8 +195,7 @@ fn output_failure<T>(message: T)
 where
     T: AsRef<str>
 {
-    use std::io::Write;
-    std::io::stderr().write_all(message.as_ref().as_bytes()).expect("cle: error: Failed to write to stderr");
+    eprintln!("{}", message.as_ref());
     std::process::exit(1);
 }
 
