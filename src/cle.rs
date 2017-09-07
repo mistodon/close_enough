@@ -16,6 +16,7 @@ fn cle_app<'a, 'b>() -> App<'a, 'b>
         .settings(&[AppSettings::SubcommandsNegateReqs, AppSettings::DisableHelpSubcommand])
         .subcommand(SubCommand::with_name("-gen-script")
             .about("Generate useful companion scripts")
+            .settings(&[AppSettings::SubcommandRequired])
             .subcommand(SubCommand::with_name("ce")
                 .about("Generate 'ce' command for fuzzy directory changing")
             )
@@ -57,11 +58,9 @@ fn main()
     {
         ("-gen-script", Some(args)) =>
         {
-            const CE_SCRIPT_SOURCE: &'static str = include_str!("scripts/ce.sh");
-
             match args.subcommand_name()
             {
-                Some("ce") => output_success(CE_SCRIPT_SOURCE),
+                Some("ce") => output_success(include_str!("scripts/ce.sh")),
                 _ => unreachable!()
             }
         },
