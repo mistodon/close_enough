@@ -76,6 +76,13 @@ fn main()
 
             for query in queries
             {
+                if query == "/"
+                {
+                    working_dir = PathBuf::new();
+                    working_dir.push("/");
+                    continue
+                }
+
                 let query = query.trim_right_matches('/');
                 let reverse_searching = query.starts_with("..");
 
