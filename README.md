@@ -53,7 +53,7 @@ Usage
 ```
 
 ```sh
-~$ ce u lo sh
+~$ ce / u lo sh
 /usr/local/share$ ce ~
 ~$
 ```
