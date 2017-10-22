@@ -1,8 +1,25 @@
 use std::iter::{Iterator, Peekable};
 
 
+/// Returns the closest match from the given options to the given query.
+///
+/// This algorithm works by scanning through each option trying to match the beginning of the
+/// query. Once a match has begun, any non-matching characters will cause the scan to skip to the
+/// next word of the option. If the end of the option is reached before the entire query has been
+/// matched somewhere, the option is considered not to match.
+///
+/// If multiple options match, it returns the shortest.
+///
+/// # Examples
+///
+/// ```
+/// let options = &["one two", "three four", "five six"];
+/// let query = "owo";
+/// let result = close_enough::close_enough(options, query);
+/// assert_eq!(result, Some(&"one two"));
+/// ```
 pub fn close_enough<I, O, Q>(options: I, query: Q) -> Option<O>
-    where I: Iterator<Item=O>, O: AsRef<str>, Q: AsRef<str>
+    where I: IntoIterator<Item=O>, O: AsRef<str>, Q: AsRef<str>
 {
     let mut shortest_answer: Option<O> = None;
 
@@ -89,7 +106,7 @@ mod tests {
 
     fn test(options: &[&str], query: &str, expected: Option<&str>)
     {
-        assert_eq!(close_enough(options.iter(), query), expected.as_ref());
+        assert_eq!(close_enough(options, query), expected.as_ref());
     }
 
     #[test]
@@ -162,8 +179,9 @@ mod tests {
     fn works_on_useful_collection_types()
     {
         assert_eq!(close_enough(["a", "thing"].iter(), "thing"), Some(&"thing"));
-        assert_eq!(close_enough((&["a", "thing"]).iter(), "thing"), Some(&"thing"));
-        assert_eq!(close_enough(vec!["a", "thing"].iter(), "thing"), Some(&"thing"));
-        assert_eq!(close_enough(vec!["a".to_owned(), "thing".to_owned()].iter(), "thing"), Some(&"thing".to_owned()));
+        assert_eq!(close_enough(&["a", "thing"], "thing"), Some(&"thing"));
+        assert_eq!(close_enough(&vec!["a", "thing"], "thing"), Some(&"thing"));
+        assert_eq!(close_enough(&vec!["a".to_owned(), "thing".to_owned()], "thing"), Some(&"thing".to_owned()));
     }
 }
+

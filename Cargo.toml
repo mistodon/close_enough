@@ -25,3 +25,4 @@ default = ["cli"]
 name = "cle"
 path = "src/cle.rs"
 required-features = ["cli"]
+doc = false
