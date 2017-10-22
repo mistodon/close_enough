@@ -2,6 +2,14 @@
 name = "close_enough"
 version = "0.2.0"
 authors = ["Pirh <***redacted.email@redacted.nope***>"]
+description = "Simple fuzzy-searching function and command line tool."
+documentation = "https://docs.rs/close_enough"
+homepage = "https://github.com/Pirh/close_enough"
+repository = "https://github.com/Pirh/close_enough"
+readme = "README.md"
+keywords = ["cli", "terminal", "fuzzy", "search", "find"]
+categories = ["command-line-interface", "filesystem"]
+license = "WTFPL"
 
 [dependencies.clap]
 version = "2.26"
