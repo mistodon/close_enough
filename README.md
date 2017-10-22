@@ -3,19 +3,26 @@ close_enough
 
 Simple fuzzy-searching function and command line tool.
 
+
 Installation
 ---
 
 `cargo install close_enough`
 
+
 ### Installing the `ce` command
+
+This is a `cd`-like command for fuzzily changing directories. See examples further down.
 
 1.  Install `close_enough` as above
 2.  Run `cle -ce-script bash > ce.sh` to generate the shell script
 3.  Source `ce.sh` in your `.bashrc`, `.profile`, or similar
 
+
 Usage
 ---
+
+### cle
 
 ```sh
 ~$ cle duck --inputs blue_and_gold_macaw duck_billed_platypus angry_dog
@@ -31,6 +38,9 @@ Usage
 ~$ ls | cle my
 > my_file.txt
 ```
+
+
+### ce
 
 ```sh
 ~$ ce my lo dir pa
