@@ -123,7 +123,8 @@ fn main() {
                     let dir_contents = std::fs::read_dir(&working_dir).unwrap();
 
                     let inputs = dir_contents.map(|e| e.unwrap()).filter_map(|entry| {
-                        if entry.file_type().unwrap().is_dir() {
+                        let metadata = std::fs::metadata(entry.path()).unwrap();
+                        if metadata.is_dir() {
                             entry.file_name().into_string().ok()
                         } else {
                             None
