@@ -1,6 +1,3 @@
-extern crate clap;
-extern crate close_enough;
-
 use clap::App;
 
 fn cle_app<'a, 'b>() -> App<'a, 'b> {
@@ -80,7 +77,7 @@ fn main() {
                     continue;
                 }
 
-                let query = query.trim_right_matches('/');
+                let query = query.trim_end_matches('/');
                 let reverse_searching = query.starts_with("..");
 
                 if reverse_searching {

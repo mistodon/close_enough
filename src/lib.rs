@@ -2,10 +2,11 @@ use std::iter::{Iterator, Peekable};
 
 /// Returns the closest match from the given options to the given query.
 ///
-/// This algorithm works by scanning through each option trying to match the beginning of the
-/// query. Once a match has begun, any non-matching characters will cause the scan to skip to the
-/// next word of the option. If the end of the option is reached before the entire query has been
-/// matched somewhere, the option is considered not to match.
+/// This algorithm works by scanning through each option trying to match the
+/// beginning of the query. Once a match has begun, any non-matching characters
+/// will cause the scan to skip to the next word of the option. If the end of the
+/// option is reached before the entire query has been matched somewhere, the
+/// option is considered not to match.
 ///
 /// If multiple options match, it returns the shortest.
 ///
@@ -71,11 +72,13 @@ where
 {
     match previous {
         None => proposed,
-        Some(prev) => if proposed.as_ref().len() < prev.as_ref().len() {
-            proposed
-        } else {
-            prev
-        },
+        Some(prev) => {
+            if proposed.as_ref().len() < prev.as_ref().len() {
+                proposed
+            } else {
+                prev
+            }
+        }
     }
 }
 
