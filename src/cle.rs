@@ -4,7 +4,7 @@ fn cle_app<'a, 'b>() -> App<'a, 'b> {
     use clap::{AppSettings, Arg, SubCommand};
 
     App::new("cle")
-        .author("Pirh, pirh.badger@gmail.com")
+        .author("Vi, wishing.engine@gmail.com")
         .version(env!("CARGO_PKG_VERSION"))
         .about("Fuzzy-search the input and return the closest match")
         .settings(&[
@@ -62,7 +62,7 @@ fn main() {
         },
 
         ("-ce", Some(args)) => {
-            use std::path::PathBuf;
+            use std::path::{Path, PathBuf};
 
             let queries = args.values_of("dirs").unwrap();
             let starting_dir =
@@ -79,6 +79,7 @@ fn main() {
 
                 let query = query.trim_end_matches('/');
                 let reverse_searching = query.starts_with("..");
+                let nested_searching = query.starts_with('%');
 
                 if reverse_searching {
                     let (_, query) = query.split_at(2);
@@ -117,26 +118,63 @@ fn main() {
                         }
                     }
                 } else {
-                    let dir_contents = std::fs::read_dir(&working_dir).unwrap();
+                    fn fetch_dirs(working_dir: &Path) -> impl Iterator<Item = String> {
+                        let dir_contents = std::fs::read_dir(working_dir).unwrap();
 
-                    let inputs = dir_contents.map(|e| e.unwrap()).filter_map(|entry| {
-                        let metadata = std::fs::metadata(entry.path()).unwrap();
-                        if metadata.is_dir() {
-                            entry.file_name().into_string().ok()
-                        } else {
-                            None
+                        dir_contents.map(|e| e.unwrap()).filter_map(|entry| {
+                            let metadata = std::fs::metadata(entry.path()).unwrap();
+                            if metadata.is_dir() {
+                                entry.file_name().into_string().ok()
+                            } else {
+                                None
+                            }
+                        })
+                    }
+
+                    if nested_searching {
+                        let (_, query) = query.split_at(1);
+                        let mut working = vec![working_dir.clone()];
+                        let mut success = false;
+                        while let Some(mut path) = working.pop() {
+                            let inputs = fetch_dirs(&path).collect::<Vec<_>>();
+                            let result = close_enough::close_enough(inputs.iter(), query);
+
+                            match result {
+                                Some(dir) => {
+                                    path.push(dir);
+                                    working_dir = path;
+                                    success = true;
+                                    break;
+                                }
+                                None => {
+                                    for dir in inputs {
+                                        let mut nextpath = path.clone();
+                                        nextpath.push(dir);
+                                        working.push(nextpath);
+                                    }
+                                }
+                            }
                         }
-                    });
 
-                    let result = close_enough::close_enough(inputs, query);
+                        if !success {
+                            output_failure(format!(
+                                "ce: No directory name matching in tree '{}': Reached '{}'",
+                                query,
+                                working_dir.display()
+                            ))
+                        }
+                    } else {
+                        let inputs = fetch_dirs(&working_dir);
+                        let result = close_enough::close_enough(inputs, query);
 
-                    match result {
-                        Some(dir) => working_dir.push(dir),
-                        None => output_failure(format!(
-                            "ce: No directory name matching '{}': Reached '{}'",
-                            query,
-                            working_dir.display()
-                        )),
+                        match result {
+                            Some(dir) => working_dir.push(dir),
+                            None => output_failure(format!(
+                                "ce: No directory name matching '{}': Reached '{}'",
+                                query,
+                                working_dir.display()
+                            )),
+                        }
                     }
                 }
             }
