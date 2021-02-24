@@ -1,70 +1,62 @@
-use clap::App;
+use structopt::{clap::AppSettings, StructOpt};
 
-fn cle_app<'a, 'b>() -> App<'a, 'b> {
-    use clap::{AppSettings, Arg, SubCommand};
-
-    App::new("cle")
-        .author("Vi, ***redacted.email@redacted.nope***")
-        .version(env!("CARGO_PKG_VERSION"))
-        .about("Fuzzy-search the input and return the closest match")
-        .settings(&[
-            AppSettings::SubcommandsNegateReqs,
-            AppSettings::DisableHelpSubcommand,
-            AppSettings::VersionlessSubcommands,
-        ])
-        .subcommand(
-            SubCommand::with_name("-ce-script")
-                .about("Generate shell script for the `ce` command")
-                .arg(
-                    Arg::with_name("shell")
-                        .required(true)
-                        .takes_value(true)
-                        .possible_values(&["bash"]),
-                ),
-        )
-        .subcommand(
-            SubCommand::with_name("-ce")
-                .about("Fuzzy-searching cd command")
-                .usage("ce <dirs>...")
-                .arg(
-                    Arg::with_name("dirs")
-                        .help("Sequence of (fuzzy) directory names to cd through")
-                        .multiple(true)
-                        .required(true),
-                ),
-        )
-        .arg(
-            Arg::with_name("query")
-                .help("The string to search for")
-                .required(true),
-        )
-        .arg(
-            Arg::with_name("inputs")
-                .long("--inputs")
-                .short("-i")
-                .help("Lines of input to search")
-                .takes_value(true)
-                .multiple(true),
-        )
-        .after_help(
-            r#"Fuzzy-search a list of inputs with a query string.
+/// Fuzzy-search the input and return the closest match
+#[derive(StructOpt)]
+#[structopt(
+    name = "cle",
+    author = "Vi, ***redacted.email@redacted.nope***",
+    settings = &[
+        AppSettings::SubcommandsNegateReqs,
+        AppSettings::DisableHelpSubcommand,
+        AppSettings::VersionlessSubcommands,
+    ],
+    after_help = r#"Fuzzy-search a list of inputs with a query string.
 The closest match is written to stdout.
 If no inputs are provided, inputs are read from stdin."#,
-        )
+)]
+pub struct CleCmd {
+    #[structopt(subcommand)]
+    sub: Option<CleSubCmd>,
+
+    /// The string to search for
+    #[structopt(required_unless("sub"))]
+    query: Option<String>,
+
+    /// Lines of input to search
+    #[structopt(long, short, required = true)]
+    inputs: Vec<String>,
+}
+
+#[derive(StructOpt)]
+pub enum CleSubCmd {
+    /// Generate shell script for the `ce` command
+    #[structopt(name = "-ce-script")]
+    CeScript {
+        #[structopt(required = true, possible_values = &["bash"])]
+        shell: String,
+    },
+
+    /// Fuzzy-searching cd command
+    #[structopt(name = "-ce", usage = "ce <dirs>...")]
+    Ce {
+        /// Sequence of (fuzzy) directory names to cd through
+        #[structopt(required = true)]
+        dirs: Vec<String>,
+    },
 }
 
 fn main() {
-    let args = cle_app().get_matches();
-    match args.subcommand() {
-        ("-ce-script", Some(args)) => match args.value_of("shell").unwrap() {
-            "bash" => output_success(include_str!("scripts/ce.sh")),
-            _ => unreachable!(),
-        },
-
-        ("-ce", Some(args)) => {
+    let args = CleCmd::from_args();
+    match args.sub {
+        Some(CleSubCmd::CeScript { shell }) => {
+            // TODO: Support other shells?
+            assert_eq!(shell, "bash");
+            output_success(include_str!("scripts/ce.sh"));
+        }
+        Some(CleSubCmd::Ce { dirs }) => {
             use std::path::{Path, PathBuf};
 
-            let queries = args.values_of("dirs").unwrap();
+            let queries = dirs;
             let starting_dir =
                 std::env::current_dir().expect("cle: error: failed to identify current directory");
             let mut working_dir = PathBuf::new();
@@ -180,21 +172,20 @@ fn main() {
             }
             output_success(working_dir.as_path().to_str().unwrap());
         }
-
-        _ => {
+        None => {
             use std::io::Read;
 
-            let query = args.value_of("query").unwrap();
-            let inputs = args.values_of("inputs");
+            let query = &args.query.unwrap();
+            let inputs = &args.inputs;
             let mut stdin = String::new();
 
-            let result: Option<&str> = match inputs {
-                Some(inputs) => close_enough::close_enough(inputs, query),
-                None => {
+            let result: Option<String> = match inputs.is_empty() {
+                false => close_enough::close_enough(inputs, query).cloned(),
+                true => {
                     std::io::stdin()
                         .read_to_string(&mut stdin)
                         .expect("cle: error: Failed to read from stdin");
-                    close_enough::close_enough(stdin.lines(), query)
+                    close_enough::close_enough(stdin.lines(), query).map(str::to_owned)
                 }
             };
 
@@ -204,7 +195,6 @@ fn main() {
             }
         }
     }
-    unreachable!();
 }
 
 fn output_success<T>(output: T)

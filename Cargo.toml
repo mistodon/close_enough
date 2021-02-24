@@ -10,20 +10,21 @@ repository = "https://github.com/mistodon/close_enough"
 readme = "README.md"
 keywords = ["cli", "terminal", "fuzzy", "search", "find"]
 categories = ["command-line-interface", "filesystem"]
-license = "MIT"
+license = "CC0-1.0"
 
 [profile.release]
 panic = "abort"
 lto = true
 
-[dependencies.clap]
-version = "~2.33.0"
+[dependencies]
+ignore = "0.4.17"
+
+[dependencies.structopt]
+version = "~0.3.21"
 optional = true
-default-features = false
-features = ["color", "wrap_help"]
 
 [features]
-cli = ["clap"]
+cli = ["structopt"]
 default = ["cli"]
 
 [[bin]]
