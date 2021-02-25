@@ -1,3 +1,5 @@
+use std::path::{Path, PathBuf};
+
 use structopt::{clap::AppSettings, StructOpt};
 
 /// Fuzzy-search the input and return the closest match
@@ -34,6 +36,16 @@ pub enum CleSubCmd {
     CeScript {
         #[structopt(required = true, possible_values = &["bash"])]
         shell: String,
+
+        #[structopt(long)]
+        with_hop: bool,
+    },
+
+    /// Generate shell script for the `hop` command
+    #[structopt(name = "-hop-script")]
+    HopScript {
+        #[structopt(required = true, possible_values = &["bash"])]
+        shell: String,
     },
 
     /// Fuzzy-searching cd command
@@ -43,19 +55,65 @@ pub enum CleSubCmd {
         #[structopt(required = true)]
         dirs: Vec<String>,
     },
+
+    #[structopt(name = "-hop", usage = "hop <query>")]
+    Hop {
+        #[structopt(subcommand)]
+        sub: HopSubCmd,
+    },
+}
+
+#[derive(StructOpt)]
+#[structopt(
+    settings = &[
+        AppSettings::SubcommandsNegateReqs,
+        AppSettings::DisableHelpSubcommand,
+        AppSettings::VersionlessSubcommands,
+    ],
+)]
+pub enum HopSubCmd {
+    /// Change to a recently used directory that fuzzy-matches a query
+    To {
+        /// The string to search working directory history for
+        #[structopt(required = true)]
+        query: String,
+    },
+
+    /// Log a directory as being recently used
+    Log {
+        /// The directory to increment the recently-used count for
+        #[structopt(required = true)]
+        dir: String,
+    },
+
+    /// Forget how many times this directory has been used
+    Forget {
+        /// The directory to forget about
+        #[structopt(required = true)]
+        dir: String,
+    },
+
+    /// List directories in the recently-used list
+    List,
 }
 
 fn main() {
     let args = CleCmd::from_args();
     match args.sub {
-        Some(CleSubCmd::CeScript { shell }) => {
-            // TODO: Support other shells?
+        // TODO: Support other shells?
+        Some(CleSubCmd::CeScript { shell, with_hop }) => {
             assert_eq!(shell, "bash");
-            output_success(include_str!("scripts/ce.sh"));
+            let script = match with_hop {
+                false => include_str!("scripts/ce.sh"),
+                true => include_str!("scripts/ce_with_hop.sh"),
+            };
+            output_success(script);
+        }
+        Some(CleSubCmd::HopScript { shell }) => {
+            assert_eq!(shell, "bash");
+            output_success(include_str!("scripts/hop.sh"));
         }
         Some(CleSubCmd::Ce { dirs }) => {
-            use std::path::{Path, PathBuf};
-
             let queries = dirs;
             let starting_dir =
                 std::env::current_dir().expect("cle: error: failed to identify current directory");
@@ -110,6 +168,7 @@ fn main() {
                         }
                     }
                 } else {
+                    // TODO: use ignore
                     fn fetch_dirs(working_dir: &Path) -> impl Iterator<Item = String> {
                         let dir_contents = std::fs::read_dir(working_dir).unwrap();
 
@@ -171,6 +230,70 @@ fn main() {
                 }
             }
             output_success(working_dir.as_path().to_str().unwrap());
+        }
+        Some(CleSubCmd::Hop { sub }) => {
+            let hopfile_path = std::env::var("HOPFILE_PATH")
+                .map(PathBuf::from)
+                .unwrap_or_else(|_| {
+                    let mut path = home::home_dir().expect("Failed to find home directory");
+                    path.push(".hopfile");
+                    path
+                });
+
+            // ensure
+            {
+                if !hopfile_path.exists() {
+                    std::fs::write(&hopfile_path, []).unwrap();
+                }
+            }
+
+            let history_entries = std::fs::read_to_string(&hopfile_path).unwrap();
+            let mut history_entries = history_entries.lines().collect::<Vec<_>>();
+
+            match sub {
+                HopSubCmd::Log { dir } => {
+                    if !dir.trim().is_empty() {
+                        let s = format!("{}\n", dir);
+                        history_entries.push(&s);
+                        history_entries.sort_unstable();
+                        history_entries.dedup();
+                        std::fs::write(&hopfile_path, history_entries.join("\n")).unwrap();
+                    }
+                }
+                HopSubCmd::Forget { dir } => {
+                    history_entries.retain(|line| line != &dir);
+                    std::fs::write(&hopfile_path, history_entries.join("\n")).unwrap();
+                }
+                HopSubCmd::To { query } => {
+                    let inputs = history_entries.iter().filter_map(|line| {
+                        <_ as AsRef<Path>>::as_ref(line)
+                            .file_name()
+                            .and_then(std::ffi::OsStr::to_str)
+                    });
+
+                    let result = close_enough::close_enough(inputs, &query);
+
+                    match result {
+                        Some(matching) => {
+                            // TODO: Kind of lame doing this again
+                            let full_matching_path = history_entries
+                                .iter()
+                                .find(|line| {
+                                    <_ as AsRef<Path>>::as_ref(line)
+                                        .file_name()
+                                        .and_then(std::ffi::OsStr::to_str)
+                                        == Some(matching)
+                                })
+                                .unwrap();
+                            output_success(full_matching_path);
+                        }
+                        None => exit_with_failure(),
+                    }
+                }
+                HopSubCmd::List => {
+                    println!("{}", history_entries.join("\n"));
+                }
+            }
         }
         None => {
             use std::io::Read;
