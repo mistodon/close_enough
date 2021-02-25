@@ -17,14 +17,12 @@ panic = "abort"
 lto = true
 
 [dependencies]
+home = { version = "0.5.3", optional = true }
 ignore = "0.4.17"
-
-[dependencies.structopt]
-version = "~0.3.21"
-optional = true
+structopt = { version = "~0.3.21", optional = true }
 
 [features]
-cli = ["structopt"]
+cli = ["home", "structopt"]
 default = ["cli"]
 
 [[bin]]
