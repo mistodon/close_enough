@@ -4,7 +4,7 @@ function ce() {
         if [ $? -eq 0 ]; then
             local linecount=$(echo "$dest" | wc -l)
             if [ "$linecount" -eq 1 ]; then
-                hop log $(realpath "$dest")
+                hop log "$(realpath "$dest")"
                 cd "$dest"
             else
                 # Help message
