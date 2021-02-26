@@ -8,8 +8,7 @@ function hop() {
             if [ "$linecount" -eq 1 ] && [ "$subcmd" == "to" ]; then
                 cd "$output"
             else
-                # Help message
-                echo "$output"
+                echo -n "$output"
             fi
         fi
     fi
