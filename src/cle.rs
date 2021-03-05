@@ -6,7 +6,7 @@ use structopt::{clap::AppSettings, StructOpt};
 #[derive(StructOpt)]
 #[structopt(
     name = "cle",
-    author = "Vi, ***redacted.email@redacted.nope***",
+    author = "Vi, wishing.engine@gmail.com",
     settings = &[
         AppSettings::SubcommandsNegateReqs,
         AppSettings::DisableHelpSubcommand,
