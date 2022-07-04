@@ -6,7 +6,7 @@ use structopt::{clap::AppSettings, StructOpt};
 #[derive(StructOpt)]
 #[structopt(
     name = "cle",
-    author = "Vi, wishing.engine@gmail.com",
+    author = "Vi, violet@hey.com",
     settings = &[
         AppSettings::SubcommandsNegateReqs,
         AppSettings::DisableHelpSubcommand,
@@ -235,7 +235,8 @@ fn main() {
             let hopfile_path = std::env::var("HOPFILE_PATH")
                 .map(PathBuf::from)
                 .unwrap_or_else(|_| {
-                    let mut path = home::home_dir().expect("Failed to find home directory");
+                    let dirs = directories::BaseDirs::new().expect("Failed to find home directory");
+                    let mut path = dirs.home_dir().to_owned();
                     path.push(".hopfile");
                     path
                 });
