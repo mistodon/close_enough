@@ -115,23 +115,24 @@ fn main() {
         }
         Some(CleSubCmd::Ce { dirs }) => {
             let queries = dirs;
+            let mut query_index = 0;
+
             let starting_dir =
                 std::env::current_dir().expect("cle: error: failed to identify current directory");
             let mut working_dir = PathBuf::new();
             working_dir.push(starting_dir);
 
-            for query in queries {
-                if query.starts_with('/') {
-                    working_dir = PathBuf::new();
-                    working_dir.push(query);
-                    continue;
-                }
-
+            while query_index < queries.len() {
+                let query = &queries[query_index];
+                let root_searching = query.starts_with('/');
                 let query = query.trim_end_matches('/');
                 let reverse_searching = query.starts_with("..");
                 let nested_searching = query.starts_with('%');
 
-                if reverse_searching {
+                if root_searching {
+                    working_dir = PathBuf::new();
+                    working_dir.push(query);
+                } else if reverse_searching {
                     let (_, query) = query.split_at(2);
 
                     match query {
@@ -167,68 +168,103 @@ fn main() {
                             }
                         }
                     }
-                } else {
-                    // TODO: use ignore
-                    fn fetch_dirs(working_dir: &Path) -> impl Iterator<Item = String> {
-                        let dir_contents = std::fs::read_dir(working_dir).unwrap();
+                } else if nested_searching {
+                    let (_, query) = query.split_at(1);
 
-                        dir_contents.map(|e| e.unwrap()).filter_map(|entry| {
-                            let metadata = std::fs::metadata(entry.path()).unwrap();
-                            if metadata.is_dir() {
-                                entry.file_name().into_string().ok()
-                            } else {
-                                None
-                            }
+                    let walk = ignore::WalkBuilder::new(&working_dir)
+                        .sort_by_file_path(|a, b| a.cmp(b))
+                        .filter_entry(|entry| {
+                            entry.file_type().map(|ft| ft.is_dir()).unwrap_or(false)
                         })
+                        .build();
+
+                    let mut shortest_match_len = None;
+                    for entry in walk {
+                        if let Ok(entry) = entry {
+                            let path = entry
+                                .path()
+                                .file_name()
+                                .expect("failed to get directory name");
+                            let path = path.to_str().expect("invalid directory name");
+                            if shortest_match_len.is_none()
+                                || path.len() < shortest_match_len.unwrap()
+                            {
+                                if close_enough::matches(path, query) {
+                                    shortest_match_len = Some(path.len());
+                                    working_dir = entry.into_path();
+                                }
+                            }
+                        }
+                    }
+                    if shortest_match_len.is_none() {
+                        output_failure(format!(
+                            "ce: No directory name matching in tree '{}': Reached '{}'",
+                            query,
+                            working_dir.display()
+                        ))
+                    }
+                } else {
+                    fn is_normal(s: &str) -> bool {
+                        !(s.starts_with('/') || s.starts_with("..") || s.starts_with('%'))
                     }
 
-                    if nested_searching {
-                        let (_, query) = query.split_at(1);
-                        let mut working = vec![working_dir.clone()];
-                        let mut success = false;
-                        while let Some(mut path) = working.pop() {
-                            let inputs = fetch_dirs(&path).collect::<Vec<_>>();
-                            let result = close_enough::close_enough(inputs.iter(), query);
+                    let mut end_index = query_index;
+                    while end_index < queries.len() {
+                        if is_normal(&queries[end_index]) {
+                            end_index += 1;
+                        } else {
+                            break;
+                        }
+                    }
 
-                            match result {
-                                Some(dir) => {
-                                    path.push(dir);
-                                    working_dir = path;
-                                    success = true;
-                                    break;
-                                }
-                                None => {
-                                    for dir in inputs {
-                                        let mut nextpath = path.clone();
-                                        nextpath.push(dir);
-                                        working.push(nextpath);
+                    let queries = &queries[query_index..end_index];
+                    let mut wip = vec![working_dir.clone()];
+
+                    for query in queries {
+                        let mut next_wip = vec![];
+                        for dir in wip.drain(..) {
+                            let query = query.clone();
+                            let walk = ignore::WalkBuilder::new(&dir)
+                                .max_depth(Some(1))
+                                .filter_entry(move |entry| {
+                                    let is_dir =
+                                        entry.file_type().map(|ft| ft.is_dir()).unwrap_or(false);
+                                    let file_name =
+                                        entry.file_name().to_str().expect("invalid file name");
+                                    is_dir && close_enough::matches(file_name, query.clone())
+                                })
+                                .build();
+
+                            for matching_entry in walk {
+                                if let Ok(entry) = matching_entry {
+                                    if entry.path() != &dir {
+                                        next_wip.push(entry.into_path());
                                     }
                                 }
                             }
                         }
-
-                        if !success {
-                            output_failure(format!(
-                                "ce: No directory name matching in tree '{}': Reached '{}'",
-                                query,
-                                working_dir.display()
-                            ))
-                        }
-                    } else {
-                        let inputs = fetch_dirs(&working_dir);
-                        let result = close_enough::close_enough(inputs, query);
-
-                        match result {
-                            Some(dir) => working_dir.push(dir),
-                            None => output_failure(format!(
-                                "ce: No directory name matching '{}': Reached '{}'",
-                                query,
-                                working_dir.display()
-                            )),
-                        }
+                        wip = next_wip;
                     }
+
+                    if wip.is_empty() {
+                        output_failure(format!(
+                            "ce: No directory name matching in tree '{}': Reached '{}'",
+                            query,
+                            working_dir.display()
+                        ))
+                    } else {
+                        working_dir = wip.pop().unwrap();
+                    }
+
+                    query_index = end_index;
+                }
+
+                let single_component_used = root_searching || reverse_searching || nested_searching;
+                if single_component_used {
+                    query_index += 1;
                 }
             }
+
             output_success(working_dir.as_path().to_str().unwrap());
         }
         Some(CleSubCmd::Hop { sub }) => {
@@ -258,11 +294,12 @@ fn main() {
                         history_entries.push(&s);
                         history_entries.sort_unstable();
                         history_entries.dedup();
+                        history_entries.retain(|s| !s.is_empty());
                         std::fs::write(&hopfile_path, history_entries.join("\n")).unwrap();
                     }
                 }
                 HopSubCmd::Forget { dir } => {
-                    history_entries.retain(|line| line != &dir);
+                    history_entries.retain(|line| !line.is_empty() && line != &dir);
                     std::fs::write(&hopfile_path, history_entries.join("\n")).unwrap();
                 }
                 HopSubCmd::To { query } => {

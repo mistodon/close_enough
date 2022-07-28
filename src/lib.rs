@@ -1,4 +1,7 @@
-use std::iter::{Iterator, Peekable};
+use std::{
+    iter::{Iterator, Peekable},
+    path::Path,
+};
 
 /// Returns the closest match from the given options to the given query.
 ///
@@ -27,36 +30,93 @@ where
     let mut shortest_answer: Option<O> = None;
 
     for opt in options {
-        let matches = {
-            let mut optchars = opt.as_ref().chars().peekable();
-            let mut querychars = query.as_ref().chars().peekable();
-
-            while querychars.peek().is_some() {
-                while optchars.peek().is_some() && !same_char(querychars.peek(), optchars.peek()) {
-                    optchars.next();
-                }
-
-                if optchars.peek().is_none() {
-                    break;
-                }
-
-                while querychars.peek().is_some() && same_char(querychars.peek(), optchars.peek()) {
-                    querychars.next();
-                    optchars.next();
-                }
-
-                skip_word(&mut optchars);
-            }
-
-            querychars.peek().is_none()
-        };
-
-        if matches {
+        if matches(opt.as_ref(), query.as_ref()) {
             shortest_answer = Some(select_shortest(opt, shortest_answer));
         }
     }
 
     shortest_answer
+}
+
+/// Check if a query matches a given candidate.
+///
+/// This algorithm works by scanning through the candidate trying to match the
+/// beginning of the query. Once a match has begun, any non-matching characters
+/// will cause the scan to skip to the next word of the candidate. If the end of the
+/// option is reached before the entire query has been matched somewhere, the
+/// option is considered not to match.
+///
+/// # Examples
+///
+/// ```
+/// assert!(close_enough::matches("three-word_candidate", "twordcan"));
+/// assert!(!close_enough::matches("three-word_candidate", "candidates"));
+/// ```
+pub fn matches<Candidate, Query>(candidate: Candidate, query: Query) -> bool
+where
+    Candidate: AsRef<str>,
+    Query: AsRef<str>,
+{
+    let mut optchars = candidate.as_ref().chars().peekable();
+    let mut querychars = query.as_ref().chars().peekable();
+
+    while querychars.peek().is_some() {
+        while optchars.peek().is_some() && !same_char(querychars.peek(), optchars.peek()) {
+            optchars.next();
+        }
+
+        if optchars.peek().is_none() {
+            break;
+        }
+
+        while querychars.peek().is_some() && same_char(querychars.peek(), optchars.peek()) {
+            querychars.next();
+            optchars.next();
+        }
+
+        skip_word(&mut optchars);
+    }
+
+    querychars.peek().is_none()
+}
+
+/// Check if a sequence of queries matches a given path.
+///
+/// This algorithm works by scanning through the candidate trying to match the
+/// beginning of the query. Once a match has begun, any non-matching characters
+/// will cause the scan to skip to the next word of the candidate. If the end of the
+/// option is reached before the entire query has been matched somewhere, the
+/// option is considered not to match.
+///
+/// If any component of the path fails to match, or the path is too short, this
+/// returns `false`.
+///
+/// # Examples
+///
+/// ```
+/// ```
+pub fn path_matches<P, S, Queries>(path: P, queries: Queries) -> bool
+where
+    P: AsRef<Path>,
+    S: AsRef<str>,
+    Queries: IntoIterator<Item = S>,
+{
+    let path = path.as_ref();
+    let mut queries = queries.into_iter();
+
+    for component in path.components() {
+        let component = component.as_os_str().to_str();
+        if let (Some(component), Some(query)) = (component, queries.next()) {
+            let query = query.as_ref();
+            if !matches(component, query) {
+                return false;
+            }
+        } else {
+            return false;
+        }
+    }
+
+    queries.next().is_none()
 }
 
 fn same_char(a: Option<&char>, b: Option<&char>) -> bool {
@@ -174,5 +234,40 @@ mod tests {
             close_enough(&vec!["a".to_owned(), "thing".to_owned()], "thing"),
             Some(&"thing".to_owned())
         );
+    }
+
+    #[test]
+    fn close_enough_match_succeeds() {
+        assert!(matches("candidate", "c"));
+        assert!(matches("candidate", "and"));
+        assert!(matches("candidate", "can"));
+        assert!(matches("one-little_candidate", "olc"));
+    }
+
+    #[test]
+    fn close_enough_match_fails() {
+        assert!(!matches("candidate", "ae"));
+        assert!(!matches("candidate", "asfdghdkfj"));
+        assert!(!matches("one-little_candidate", "olx"));
+        assert!(!matches("", "t"));
+    }
+
+    #[test]
+    fn path_matches_succeeds() {
+        assert!(path_matches("one/two/three", &["one", "two", "three"]));
+        assert!(path_matches("one/two/three", &["o", "t", "t"]));
+        assert!(path_matches(
+            "first_dir/second-dir/third",
+            &["fd", "sd", "th"]
+        ));
+    }
+
+    #[test]
+    fn path_matches_fails() {
+        assert!(!path_matches("one/two/three", &["one"]));
+        assert!(!path_matches(
+            "one/two/three",
+            &["one", "two", "three", "four"]
+        ));
     }
 }

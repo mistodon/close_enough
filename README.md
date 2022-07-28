@@ -2,7 +2,7 @@ close_enough
 ===
 
 [![Crates.io](https://img.shields.io/crates/v/close_enough.svg)](https://crates.io/crates/close_enough)
-[![Docs.rs](https://docs.rs/close_enough/badge.svg)](https://docs.rs/close_enough/0.4.0/close_enough/)
+[![Docs.rs](https://docs.rs/close_enough/badge.svg)](https://docs.rs/close_enough/0.5.0/close_enough/)
 
 Simple fuzzy-searching function and command line tool.
 
