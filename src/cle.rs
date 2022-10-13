@@ -253,7 +253,7 @@ fn main() {
                             working_dir.display()
                         ))
                     } else {
-                        working_dir = wip.pop().unwrap();
+                        working_dir = wip.into_iter().min_by_key(|p| p.as_os_str().len()).unwrap();
                     }
 
                     query_index = end_index;
