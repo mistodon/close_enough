@@ -179,21 +179,18 @@ fn main() {
                         .build();
 
                     let mut shortest_match_len = None;
-                    for entry in walk {
-                        if let Ok(entry) = entry {
-                            let path = entry
-                                .path()
-                                .file_name()
-                                .expect("failed to get directory name");
-                            let path = path.to_str().expect("invalid directory name");
-                            if shortest_match_len.is_none()
-                                || path.len() < shortest_match_len.unwrap()
-                            {
-                                if close_enough::matches(path, query) {
-                                    shortest_match_len = Some(path.len());
-                                    working_dir = entry.into_path();
-                                }
-                            }
+                    for entry in walk.flatten() {
+                        let path = entry
+                            .path()
+                            .file_name()
+                            .expect("failed to get directory name");
+                        let path = path.to_str().expect("invalid directory name");
+                        if (shortest_match_len.is_none()
+                            || path.len() < shortest_match_len.unwrap())
+                            && close_enough::matches(path, query)
+                        {
+                            shortest_match_len = Some(path.len());
+                            working_dir = entry.into_path();
                         }
                     }
                     if shortest_match_len.is_none() {
@@ -235,11 +232,9 @@ fn main() {
                                 })
                                 .build();
 
-                            for matching_entry in walk {
-                                if let Ok(entry) = matching_entry {
-                                    if entry.path() != &dir {
-                                        next_wip.push(entry.into_path());
-                                    }
+                            for entry in walk.flatten() {
+                                if entry.path() != dir {
+                                    next_wip.push(entry.into_path());
                                 }
                             }
                         }
