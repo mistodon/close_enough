@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use structopt::{clap::AppSettings, StructOpt};
+use structopt::{StructOpt, clap::AppSettings};
 
 /// Fuzzy-search the input and return the closest match
 #[derive(StructOpt)]
@@ -64,7 +64,8 @@ fn main() {
             let script = format!(
                 "function {cmd}() {{
     if [ \"$#\" -gt 0 ]; then
-        local dest=$(cle -ce \"$@\")
+        local dest
+        dest=$(cle -ce \"$@\")
         if [ $? -eq 0 ]; then
             local linecount=$(echo \"$dest\" | wc -l)
             if [ \"$linecount\" -eq 1 ]; then
